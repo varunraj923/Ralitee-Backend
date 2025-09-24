@@ -1,15 +1,18 @@
 const express = require('express');
 const connectDB = require('./db/connection.js');
 const env = require('dotenv');
- 
+const authRouter = require('./routes/auth.js');
+const cookieParser = require('cookie-parser');
+ require("dotenv").config();
 const app = express();
-env.config();
+
 
 const PORT = process.env.PORT || 3000;
 
-app.post('/hello',(req,res)=>{
-    res.send("OM Ganeshaaiye namah");
-})
+app.use(express.json());
+app.use(cookieParser());
+
+app.use("/", authRouter);
 
 //database connection and server configuration
 
