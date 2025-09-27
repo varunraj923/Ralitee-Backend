@@ -5,6 +5,7 @@ const authRouter = require('./routes/auth.js');
 const cookieParser = require('cookie-parser');
  require("dotenv").config();
 const app = express();
+const productRouter = require('./routes/product.js');
 
 
 const PORT = process.env.PORT || 3000;
@@ -13,6 +14,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.use("/", authRouter);
+app.use("/",productRouter);
 
 //database connection and server configuration
 
