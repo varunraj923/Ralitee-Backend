@@ -8,39 +8,64 @@ const userAuth = require('../middleware/auth.middleware.js');
 
 const authRouter = express.Router();
 
-authRouter.post("/auth/register", async (req, res) => {
+authRouter.post("/register", async (req, res) => {
   try {
-    authValidation(req);
     const { name, username, email, password, role } = req.body;
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    // 🔍 CHECK IF USER ALREADY EXISTS
+    const existingUser = await User.findOne({
+      $or: [{ email }, { username }]
+    });
 
-    const newUser = new User({
+    if (existingUser) {
+      if (existingUser.email === email) {
+        return res.status(409).json({
+          message: "Email is already registered"
+        });
+      }
+
+      if (existingUser.username === username) {
+        return res.status(409).json({
+          message: "Username is already taken"
+        });
+      }
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
       name,
       username,
       email,
-      password: passwordHash,
-      role,
+      password: hashedPassword,
+      role: role || "user"
     });
 
-    const savedUser = await newUser.save();
-
-    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
+    res.status(201).json({
+      message: "User registered successfully",
+      user
     });
 
-    res.cookie("token", token);
-
-    res.json({ "user saved successfully": savedUser });
   } catch (error) {
-    console.log("something went wrong while registering user:", error);
-    res.status(500).json({ error: error.message });
-  }
 
- 
+    // 🛑 SAFETY NET (duplicate key error)
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyValue)[0];
+      return res.status(409).json({
+        message: `${field} already exists`
+      });
+    }
+
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
+    });
+  }
 });
 
- authRouter.post("/auth/login", async (req, res) => {
+
+
+ authRouter.post("/login", async (req, res) => {
     try {
     //   authValidation(req);
       const { email, password } = req.body;
@@ -72,7 +97,7 @@ authRouter.post("/auth/register", async (req, res) => {
     }
   });
 
-  authRouter.get("/auth/me",userAuth,async(req,res)=>{
+  authRouter.get("/me",userAuth,async(req,res)=>{
     try{
       res.json({data : req.user});
 
@@ -81,7 +106,7 @@ authRouter.post("/auth/register", async (req, res) => {
     }
   })
 
-  authRouter.post('/auth/logout', userAuth, async(req,res) =>{
+  authRouter.post('/logout', userAuth, async(req,res) =>{
     res.cookie("token",null),{
       expires: new Date(Date.now())
     }

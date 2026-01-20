@@ -1,64 +1,44 @@
-const express = require('express');
-const userAuth = require('../middleware/auth.middleware');
-const Product = require('../models/product.model');
-const authRouter = require('./auth');
+const express = require("express");
+const userAuth = require("../middleware/auth.middleware");
+const adminOnly = require("../middleware/admin.middleware");
+const Product = require("../models/product.model");
 
 const productRouter = express.Router();
 
-//api for creating product (admin only)
-productRouter.post('/product', userAuth, async (req, res) => {
+/**
+ * CREATE PRODUCT (ADMIN)
+ */
+productRouter.post("/", userAuth, adminOnly, async (req, res) => {
   try {
-    const { role } = req.user;
-    if (role !== 'admin') {
-      return res.status(403).json({ error: "Only admin can create products" });
-    }
-
-    const { 
-      name, 
-      description, 
-      price, 
-      currency, 
-      discountPrice, 
-      images, 
-      thumbnail, 
-      attributes, 
-      rating, 
-      status 
-    } = req.body;
-
-    const newProduct = new Product({
-      name,
-      description,
-      price,
-      currency,
-      discountPrice,
-      images,
-      thumbnail,
-      attributes,
-      rating,
-      status
+    const product = await Product.create(req.body);
+    res.status(201).json({
+      message: "Product created successfully",
+      product,
     });
-
-    const savedProduct = await newProduct.save();
-    res.status(201).json({ message: "Product created successfully", product: savedProduct });
-
   } catch (error) {
-    console.error("Error while posting product:", error.message);
-    res.status(500).json({ error: "Something went wrong while creating product" });
+    res.status(500).json({ error: error.message });
   }
 });
 
-
-productRouter.get('/all/product', userAuth, async (req, res) => {
+/**
+ * GET ALL PRODUCTS (ADMIN + USER)
+ */
+productRouter.get("/", userAuth, async (req, res) => {
   try {
-    
-    const { page = 1, limit = 10, category, status, minPrice, maxPrice, search } = req.query;
+    const {
+      page = 1,
+      limit = 10,
+      category,
+      status,
+      minPrice,
+      maxPrice,
+      search,
+    } = req.query;
 
-   
     const query = {};
 
-    if (category) query.category = category; 
-    if (status) query.status = status;       
+    if (category) query.category = category;
+    if (status) query.status = status;
 
     if (minPrice || maxPrice) {
       query.price = {};
@@ -67,111 +47,87 @@ productRouter.get('/all/product', userAuth, async (req, res) => {
     }
 
     if (search) {
-      query.name = { $regex: search, $options: "i" }; 
+      query.name = { $regex: search, $options: "i" };
     }
 
-  
     const products = await Product.find(query)
+      .populate("category", "name")
       .skip((page - 1) * limit)
       .limit(Number(limit))
       .sort({ createdAt: -1 });
 
     const total = await Product.countDocuments(query);
 
-    res.status(200).json({
+    res.json({
       total,
       page: Number(page),
-      limit: Number(limit),
       totalPages: Math.ceil(total / limit),
       products,
     });
-
   } catch (error) {
-    console.error("Error fetching products:", error.message);
-    res.status(500).json({ error: "Something went wrong while fetching products" });
+    res.status(500).json({ error: error.message });
   }
 });
 
-productRouter.get("/product/:id", userAuth, async (req, res) => {
+/**
+ * GET SINGLE PRODUCT
+ */
+productRouter.get("/:id", userAuth, async (req, res) => {
   try {
-    const productId = req.params.id;
-
-    const product = await Product.findById(productId);
+    const product = await Product.findById(req.params.id).populate(
+      "category",
+      "name"
+    );
 
     if (!product) {
-      return res.status(404).json({ error: "Product not found in our database" });
+      return res.status(404).json({ message: "Product not found" });
     }
 
-    res.status(200).json({
-      message: "Product found successfully",
-      product
-    });
-
+    res.json(product);
   } catch (error) {
-    console.error("Error fetching product:", error.message);
-    res.status(500).json({ error: "Something went wrong while fetching the product" });
+    res.status(500).json({ error: error.message });
   }
 });
 
-productRouter.put("/product/:id", userAuth, async (req, res) => {
+/**
+ * UPDATE PRODUCT (ADMIN)
+ */
+productRouter.put("/:id", userAuth, adminOnly, async (req, res) => {
   try {
-    const productId = req.params.id;
-    const { role } = req.user;
+    const updated = await Product.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
 
-  
-    if (role !== "admin") {
-      return res.status(403).json({ message: "Only admin can update products" });
+    if (!updated) {
+      return res.status(404).json({ message: "Product not found" });
     }
 
-    
-    const product = await Product.findById(productId);
-    if (!product) {
-      return res.status(404).json({ message: "Product not found in database" });
-    }
-
-   
-    const data = req.body;
-    const updatedProduct = await Product.findByIdAndUpdate(productId, data, {
-      new: true,          
-      runValidators: true 
-    });
-
-    res.status(200).json({
+    res.json({
       message: "Product updated successfully",
-      product: updatedProduct
+      product: updated,
     });
-
   } catch (error) {
-    console.error("Error updating product:", error.message);
-    res.status(500).json({ error: "Something went wrong while editing product" });
+    res.status(500).json({ error: error.message });
   }
 });
 
-productRouter.delete("/product/:id", userAuth, async (req, res) => {
+/**
+ * DELETE PRODUCT (ADMIN)
+ */
+productRouter.delete("/:id", userAuth, adminOnly, async (req, res) => {
   try {
-    const { role } = req.user;
+    const deleted = await Product.findByIdAndDelete(req.params.id);
 
-    if (role !== "admin") {
-      return res.status(403).json({ message: "Only admin can delete products" });
+    if (!deleted) {
+      return res.status(404).json({ message: "Product not found" });
     }
 
-    const productId = req.params.id;
-
-    const product = await Product.findById(productId);
-    if (!product) {
-      return res.status(404).json({ message: "Product not found in the database" });
-    }
-
-    await Product.findByIdAndDelete(productId);
-
-    res.status(200).json({ message: `${product.name} deleted successfully` });
-
+    res.json({ message: "Product deleted successfully" });
   } catch (error) {
-    console.error("Error while deleting the product:", error.message);
-    res.status(500).json({ error: "Something went wrong while deleting product" });
+    res.status(500).json({ error: error.message });
   }
 });
-
-
 
 module.exports = productRouter;
