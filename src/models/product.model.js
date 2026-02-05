@@ -3,6 +3,7 @@ const slugify = require("slugify");
 
 const productSchema = new mongoose.Schema(
   {
+    /* ================= BASIC INFO ================= */
     name: {
       type: String,
       required: [true, "Product name is required"],
@@ -21,6 +22,7 @@ const productSchema = new mongoose.Schema(
       default: "",
     },
 
+    /* ================= PRICING ================= */
     price: {
       type: Number,
       required: [true, "Price is required"],
@@ -44,11 +46,21 @@ const productSchema = new mongoose.Schema(
       },
     },
 
+    // 🔥 Derived discount percentage (used in flash sale sorting)
+    discountPercentage: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+
+   
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
       required: true,
     },
+
 
     images: {
       type: [String],
@@ -59,22 +71,39 @@ const productSchema = new mongoose.Schema(
       type: String,
     },
 
+
     attributes: {
       type: Map,
       of: String,
       default: {},
     },
 
+
     rating: {
       average: { type: Number, default: 0, min: 0, max: 5 },
       count: { type: Number, default: 0, min: 0 },
     },
 
+ 
     stock: {
       type: Number,
       default: 0,
       min: 0,
     },
+
+
+    soldCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+
+    isFlashSale: {
+      type: Boolean,
+      default: false,
+    },
+
 
     status: {
       type: String,
@@ -85,7 +114,7 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-/* 🔥 AUTO-GENERATE SLUG */
+
 productSchema.pre("save", function (next) {
   if (!this.slug && this.name) {
     this.slug = slugify(this.name, {
@@ -93,6 +122,16 @@ productSchema.pre("save", function (next) {
       strict: true,
     });
   }
+
+  // 🔥 Auto-calculate discount percentage
+  if (this.discountPrice && this.price) {
+    this.discountPercentage = Math.round(
+      ((this.price - this.discountPrice) / this.price) * 100
+    );
+  } else {
+    this.discountPercentage = 0;
+  }
+
   next();
 });
 
