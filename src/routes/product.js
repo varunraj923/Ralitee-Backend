@@ -21,7 +21,12 @@ productRouter.post("/", userAuth, adminOnly, async (req, res) => {
 });
 
 /**
- * GET ALL PRODUCTS (ADMIN + USER)
+ * GET PRODUCTS (ADMIN + USER)
+ * Supports:
+ * - Best Selling
+ * - Flash Sale
+ * - Explore Products
+ * - Filters, Search, Pagination
  */
 productRouter.get("/", userAuth, async (req, res) => {
   try {
@@ -33,10 +38,13 @@ productRouter.get("/", userAuth, async (req, res) => {
       minPrice,
       maxPrice,
       search,
+      section, // 🔥 NEW (bestSelling | flashSale | explore)
     } = req.query;
 
     const query = {};
+    let sort = { createdAt: -1 }; // default: explore
 
+    // Filters
     if (category) query.category = category;
     if (status) query.status = status;
 
@@ -50,15 +58,33 @@ productRouter.get("/", userAuth, async (req, res) => {
       query.name = { $regex: search, $options: "i" };
     }
 
+    // 🔥 SECTION LOGIC (HOMEPAGE CONTROL)
+    switch (section) {
+      case "bestSelling":
+        sort = { soldCount: -1 };
+        break;
+
+      case "flashSale":
+        query.isFlashSale = true;
+        sort = { discountPercentage: -1 };
+        break;
+
+      case "explore":
+      default:
+        sort = { createdAt: -1 };
+        break;
+    }
+
     const products = await Product.find(query)
       .populate("category", "name")
+      .sort(sort)
       .skip((page - 1) * limit)
-      .limit(Number(limit))
-      .sort({ createdAt: -1 });
+      .limit(Number(limit));
 
     const total = await Product.countDocuments(query);
 
     res.json({
+      section: section || "explore",
       total,
       page: Number(page),
       totalPages: Math.ceil(total / limit),

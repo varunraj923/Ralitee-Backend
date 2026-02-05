@@ -65,75 +65,76 @@ authRouter.post("/register", async (req, res) => {
 
 
 
- authRouter.post("/login", async (req, res) => {
-    try {
+authRouter.post("/login", async (req, res) => {
+  try {
     //   authValidation(req);
-      const { email, password } = req.body;
+    const { email, password } = req.body;
 
-      const user = await User.findOne({ email: email });
+    const user = await User.findOne({ email: email });
 
-      if (!user) {
-        throw new Error("User not found with this email");
-      }
-
-      const isPasswordValid = await bcrypt.compare(
-        password,
-        user.password
-      );
-      if (!isPasswordValid) {
-        throw new Error("Invalid password");
-      }
-
-      if (user && isPasswordValid) {
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-          expiresIn: "1d",
-        });
-        res.cookie("token", token);
-        res.json({ message: "Login successful", user, token });
-      }
-    } catch (error) {
-      console.log("something went wrong while logging in:", error);
-      res.status(500).json({ error: error.message });
+    if (!user) {
+      throw new Error("User not found with this email");
     }
+
+    const isPasswordValid = await bcrypt.compare(
+      password,
+      user.password
+    );
+    if (!isPasswordValid) {
+      throw new Error("Invalid password");
+    }
+
+    if (user && isPasswordValid) {
+      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+        expiresIn: "1d",
+      });
+      res.cookie("token", token);
+      res.json({ message: "Login successful", user, token });
+    }
+  } catch (error) {
+    console.log("something went wrong while logging in:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+authRouter.get("/me", userAuth, async (req, res) => {
+  try {
+    res.json({ data: req.user });
+
+  } catch (error) {
+    throw new Error('error in fetching the profile', error.message);
+  }
+})
+
+authRouter.post('/logout', userAuth, async (req, res) => {
+  res.cookie("token", null, {
+    expires: new Date(Date.now()),
+    httpOnly: true,
   });
+  res.send(req.user.name + " " + "logout successfully");
+})
 
-  authRouter.get("/me",userAuth,async(req,res)=>{
-    try{
-      res.json({data : req.user});
-
-    }catch(error){
-      throw new Error('error in fetching the profile',error.message);
-    }
-  })
-
-  authRouter.post('/logout', userAuth, async(req,res) =>{
-    res.cookie("token",null),{
-      expires: new Date(Date.now())
-    }
-    res.send(req.user.name + " " + "logout successfully");
-  })
-
-  //delete accout api 
-  authRouter.delete('/delete/users/:id', async(req,res)=>{
-    try{
+//delete accout api 
+authRouter.delete('/delete/users/:id', async (req, res) => {
+  try {
     const userId = req.params.id;
     const user = await User.findById(userId);
 
-    if(!user){
+    if (!user) {
       return res.status(404).json({ error: "User not found in the database" });
     }
     await User.findByIdAndDelete(userId);
 
     res.send(req.user.name + " " + "deleted successfully");
 
-    }catch(error){
-      console.error(error);
-      return res.status(404).json({message : "something went wrong while deleting user "})
-    }
-   
-  })
+  } catch (error) {
+    console.error(error);
+    return res.status(404).json({ message: "something went wrong while deleting user " })
+  }
 
-  //
+})
+
+//
 
 authRouter.put("/update/user/:id", userAuth, async (req, res) => {
   try {
@@ -147,7 +148,7 @@ authRouter.put("/update/user/:id", userAuth, async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(
       id,
       updates,
-      { new: true, runValidators: true, select: "-password" } 
+      { new: true, runValidators: true, select: "-password" }
     );
 
     if (!updatedUser) {
@@ -162,6 +163,28 @@ authRouter.put("/update/user/:id", userAuth, async (req, res) => {
     res.status(500).json({ message: "Error updating user", error: error.message });
   }
 });
+
+authRouter.post("/reset-password", async (req, res) => {
+  try {
+    const { email, oldPassword, newPassword } = req.body;
+    const user = await User.findOne({ email: email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found with this email" });
+    }
+    const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Old password is incorrect" });
+    }
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedNewPassword;
+    await user.save();
+    res.json({ message: "Password reset successfully", user });
+  } catch (error) {
+    res.status(500).json({ message: "Something went wrong", error: error.message });
+  }
+
+})
 
 
 

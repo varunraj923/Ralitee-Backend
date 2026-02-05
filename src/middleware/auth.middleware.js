@@ -4,7 +4,16 @@ require("dotenv").config();
 
 const userAuth = async (req, res, next) => {
   try {
-    const { token } = req.cookies;
+    // Check for token in cookies first, then in Authorization header
+    let token = req.cookies.token;
+
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        token = authHeader.substring(7);
+      }
+    }
+
     console.log("Token:", token);
 
     if (!token) {
@@ -19,7 +28,7 @@ const userAuth = async (req, res, next) => {
       return res.status(404).json({ error: "User not found in the database" });
     }
 
-    req.user = user; 
+    req.user = user;
     next();
   } catch (err) {
     console.error(err);
