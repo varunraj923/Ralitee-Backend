@@ -18,6 +18,7 @@ exports.placeOrder = async (req, res) => {
         // 2. Calculate Total and Prepare Order Items
         let totalAmount = 0;
         const orderItems = [];
+        const emailOrderItems = []; // For email with populated product details
 
         for (const item of cart.items) {
             if (!item.product) continue; // Skip if product deleted
@@ -31,12 +32,23 @@ exports.placeOrder = async (req, res) => {
 
             totalAmount += price * item.quantity;
 
-            orderItems.push({
+            const orderItem = {
                 product: item.product._id,
                 quantity: item.quantity,
                 size: item.size,
                 color: item.color,
                 price: price // Snapshot price at time of order !!
+            };
+
+            orderItems.push(orderItem);
+
+            // Push populated item for email
+            emailOrderItems.push({
+                product: item.product, // Full product object
+                quantity: item.quantity,
+                size: item.size,
+                color: item.color,
+                price: price
             });
         }
 
@@ -58,38 +70,31 @@ exports.placeOrder = async (req, res) => {
         res.status(201).json({ message: "Order placed successfully", order });
 
         // 5. Send Email Notification
-        const message = `
-            <h1>New Order Placed</h1>
-            <p>Order ID: ${order._id}</p>
-            <p>User ID: ${userId}</p>
-            <h2>Shipping Address</h2>
-            <p>${shippingAddress.fullName}</p>
-            <p>${shippingAddress.addressLine1}, ${shippingAddress.addressLine2}</p>
-            <p>${shippingAddress.city}, ${shippingAddress.state}, ${shippingAddress.postalCode}</p>
-            <p>${shippingAddress.country}</p>
-            <p>Phone: ${shippingAddress.phoneNumber}</p>
-            <h2>Order Details</h2>
-            <ul>
-                ${orderItems.map(item => `
-                    <li>
-                        Product ID: ${item.product} <br>
-                        Quantity: ${item.quantity} <br>
-                        Price: ${item.price} <br>
-                        Size: ${item.size} <br>
-                        Color: ${item.color}
-                    </li>
-                `).join('')}
-            </ul>
-            <p><strong>Total Amount: ${totalAmount}</strong></p>
-        `;
-
+        // 5. Send Email Notification
         try {
+            const { getOrderConfirmationEmailHtml, getAdminOrderEmailHtml } = require("../utils/emailTemplates");
+
+            // Fetch the user to get name and email
+            const user = await require("../models/user.model").findById(userId);
+
+            // 1. Send Confirmation to User
+            const userEmailHtml = getOrderConfirmationEmailHtml(order, user, emailOrderItems);
+            await sendEmail({
+                email: user.email,
+                subject: `Order Confirmation - #${order._id}`,
+                message: `Thank you for your order! Your Order ID is ${order._id}.`,
+                html: userEmailHtml
+            });
+
+            // 2. Send Alert to Admin
+            const adminEmailHtml = getAdminOrderEmailHtml(order, user, emailOrderItems);
             await sendEmail({
                 email: "raliteeofficial@gmail.com",
-                subject: "New Order Placed",
-                message: "New Order Placed",
-                html: message
+                subject: `ACTION REQUIRED: New Order #${order._id}`,
+                message: `New Order Received! Order ID: ${order._id}`,
+                html: adminEmailHtml
             });
+
         } catch (emailError) {
             console.error("Error sending email:", emailError);
             // Don't fail the request if email fails, but log it
