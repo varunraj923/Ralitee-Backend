@@ -35,6 +35,7 @@ app.use("/api/admin", adminRouter);
 app.use("/api/upload", uploadRouter);
 app.use("/api/cart", require("./routes/cart.js"));
 app.use("/api/orders", require("./routes/order.js"));
+app.use("/api/user", require("./routes/user.js"));
 
 // health check (optional but recommended)
 app.get("/api/health", (req, res) => {
