@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const connectDB = require("./db/connection.js");
 const authRouter = require("./routes/auth.js");
@@ -8,7 +9,6 @@ const uploadRouter = require("./routes/upload");
 
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
-require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -33,6 +33,8 @@ app.use("/api/categories", categoryRouter);
 app.use("/api/admin", adminRouter);
 
 app.use("/api/upload", uploadRouter);
+app.use("/api/cart", require("./routes/cart.js"));
+app.use("/api/orders", require("./routes/order.js"));
 
 // health check (optional but recommended)
 app.get("/api/health", (req, res) => {
