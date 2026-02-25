@@ -61,4 +61,18 @@ router.post(
 );
 
 
+// Delete category
+router.delete("/:id", userAuth, adminOnly, async (req, res) => {
+  try {
+    const category = await Category.findByIdAndDelete(req.params.id);
+    if (!category) {
+      return res.status(404).json({ error: "Category not found" });
+    }
+    res.json({ message: "Category deleted successfully" });
+  } catch (error) {
+    console.error("Delete category error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
