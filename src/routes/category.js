@@ -41,10 +41,16 @@ router.post(
 
       // ✅ Upload image ONLY if file exists
       if (req.file) {
-        const result = await cloudinary.uploader.upload(
-          `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`,
-          { folder: "categories" }
-        );
+        const result = await new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            { folder: "categories" },
+            (error, result) => {
+              if (error) return reject(error);
+              resolve(result);
+            }
+          );
+          stream.end(req.file.buffer);
+        });
 
         categoryData.image = result.secure_url;
         categoryData.images = [result.secure_url];
