@@ -28,7 +28,7 @@ productRouter.post("/", userAuth, adminOnly, async (req, res) => {
  * - Explore Products
  * - Filters, Search, Pagination
  */
-productRouter.get("/", userAuth, async (req, res) => {
+productRouter.get("/", async (req, res) => {
   try {
     const {
       page = 1,
@@ -98,7 +98,7 @@ productRouter.get("/", userAuth, async (req, res) => {
 /**
  * GET SINGLE PRODUCT
  */
-productRouter.get("/:id", userAuth, async (req, res) => {
+productRouter.get("/:id", async (req, res) => {
   try {
     const product = await Product.findById(req.params.id).populate(
       "category",
