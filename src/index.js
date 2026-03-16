@@ -7,6 +7,7 @@ const categoryRouter = require("./routes/category.js");
 const adminRouter = require("./routes/admin.js");
 const uploadRouter = require("./routes/upload");
 const homepageRouter = require("./routes/homepage");
+const wishlistRouter = require('./routes/wishlist.js')
 
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
@@ -33,6 +34,7 @@ app.use("/api/products", productRouter);
 app.use("/api/categories", categoryRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/homepage", homepageRouter);
+app.use("/api/wishlist", wishlistRouter)
 
 app.use("/api/upload", uploadRouter);
 app.use("/api/cart", require("./routes/cart.js"));
