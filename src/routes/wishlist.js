@@ -10,7 +10,6 @@ wishlistRouter.post("/:productId", userAuth, async (req, res) => {
 
         const userId = req.user._id;
         const productId = req.params.productId;
-
         const product = await Product.findById(productId);
 
         if (!product) {
@@ -18,28 +17,33 @@ wishlistRouter.post("/:productId", userAuth, async (req, res) => {
                 message: "Product not found"
             });
         }
+        let wishlist = await Wishlist.findOne({ user: userId });
 
-        const existing = await Wishlist.findOne({
-            user: userId,
-            product: productId
-        });
+        if (wishlist) {
+            const alreadyAdded = wishlist.products.some(
+                (item) => item.product.toString() === productId
+            );
 
-        if (existing) {
-            return res.status(400).json({
-                message: "Product already in wishlist"
+            if (alreadyAdded) {
+                return res.status(400).json({
+                    message: "Product already in wishlist"
+                });
+            }
+            wishlist.products.push({ product: productId });
+            await wishlist.save();
+
+        } else {
+            wishlist = new Wishlist({
+                user: userId,
+                products: [{ product: productId }]
             });
+
+            await wishlist.save();
         }
-
-        const wishlistItem = new Wishlist({
-            user: userId,
-            product: productId
-        });
-
-        await wishlistItem.save();
 
         res.status(201).json({
             message: "Wishlist added successfully",
-            wishlist: wishlistItem
+            wishlist: wishlist
         });
 
     } catch (err) {
@@ -49,5 +53,33 @@ wishlistRouter.post("/:productId", userAuth, async (req, res) => {
         });
     }
 });
+
+wishlistRouter.get("/", userAuth, async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const wishlist = await Wishlist.findOne({ user: userId }).populate("products.product");
+
+        if (!wishlist) {
+            return res.status(400).json({
+                message: "wishlist is empty",
+                products: []
+            })
+
+        }
+        res.status(200).json({
+            message: "product fetched successfully",
+            count: wishlist.products.length,
+            products: wishlist.products
+        })
+
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({
+            message: "something went wrong while fetching wishlist"
+        })
+    }
+
+})
 
 module.exports = wishlistRouter;
