@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 
 const wishlistSchema = mongoose.Schema({
@@ -31,4 +31,4 @@ const wishlistSchema = mongoose.Schema({
     { timeStamps: true }
 )
 
-export default mongoose.model("wishlist", wishlistSchema);
+module.exports = mongoose.model("wishlist", wishlistSchema);
