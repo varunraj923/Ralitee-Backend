@@ -82,4 +82,36 @@ wishlistRouter.get("/", userAuth, async (req, res) => {
 
 })
 
+wishlistRouter.delete("/:productId", userAuth, async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { productId } = req.params;
+
+        const wishlist = await Wishlist.findOne({ user: userId });
+
+        if (!wishlist) {
+            return res.status(404).json({
+                message: "Wishlist not found"
+            });
+        }
+
+        wishlist.products = wishlist.products.filter(
+            item => item.product.toString() !== productId
+        );
+
+        await wishlist.save();
+
+        res.status(200).json({
+            message: "Product removed from wishlist",
+            products: wishlist.products
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({
+            message: "Something went wrong"
+        });
+    }
+});
+
 module.exports = wishlistRouter;
