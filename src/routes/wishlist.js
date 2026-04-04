@@ -60,7 +60,7 @@ wishlistRouter.get("/", userAuth, async (req, res) => {
         const wishlist = await Wishlist.findOne({ user: userId }).populate("products.product");
 
         if (!wishlist) {
-            return res.status(400).json({
+            return res.status(200).json({
                 message: "wishlist is empty",
                 products: []
             })

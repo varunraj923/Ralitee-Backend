@@ -31,8 +31,14 @@ const userAuth = async (req, res, next) => {
     req.user = user;
     next();
   } catch (err) {
-    console.error(err);
-    res.status(400).send("Error: " + err.message);
+    console.error("Auth error:", err.message);
+    if (err.name === "JsonWebTokenError") {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).json({ error: "Token expired" });
+    }
+    res.status(500).json({ error: "Authentication error" });
   }
 };
 
